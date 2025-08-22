@@ -43,59 +43,59 @@ exports.createUser = async (req,res)=>{
     }
 }
 
-exports.login= async (req,res)=>{
-    const jwt_secret = "67799r567cbcccvgcfgbvv";
-    const jwt_exp_in='24h'
-    try{
-        console.log(req.body);
-        const {email,password}=req.body;
-        db.query('select * from users where email = ?',[email], async (err,result)=>{
-            if(err){
-                console.log('Error during login:', err);
-                return res.status(500).send('Internal Server Error');
-            }
-            if(result.length==0){
-                return res.status(400).send('User not found');
-            }
-            const user = result[0];
-            // if(user.password_hash===)
-            const isMatch = await bcryptjs.compare(password,user.password_hash);
-            // const isMatch= user.password_hash==password?true:false;
-            if(!isMatch){
-                return res.status(400);
-            }
-            else{
-                 const payload = {
-                  userId: user.user_id,
-                  email: user.email,
-                  };
-                  const token = jwt.sign(payload, jwt_secret, { 
-                     expiresIn: jwt_exp_in 
-                    });
-                return res.status(200).json({
-                success: true,
-                message: 'Login successful',
-                token: token,
-                user: {
-                    user_id: user.user_id,
-                    email: user.email,
-                    username:user.username,
-                    role:user.role,
-                    base_id:user.base_id,
-                    status:user.status,
-                    base_name:user.base_name,
-                    base_code:user.base_code,
-                    location:user.location
-                }
-            });
-            }
-        })
+exports.login = async (req, res) => {
+  const jwt_secret = "67799r567cbcccvgcfgbvv";
+  const jwt_exp_in = "24h";
+
+  try {
+    console.log(req.body);
+    const { email, password } = req.body;
+
+    // ✅ Use promise-based query
+    const [result] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+
+    if (result.length === 0) {
+      return res.status(400).send("User not found");
     }
-    catch(err){
-        console.error('Error during login:', err);
-        res.status(500).send('Internal Server Error');
+
+    const user = result[0];
+
+    // ✅ Compare hashed password
+    const isMatch = await bcryptjs.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).send("Invalid password");
     }
-}
+
+    // ✅ Build JWT token
+    const payload = {
+      userId: user.user_id,
+      email: user.email,
+    };
+
+    const token = jwt.sign(payload, jwt_secret, { expiresIn: jwt_exp_in });
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token: token,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        base_id: user.base_id,
+        status: user.status,
+        // ⚠️ these require a JOIN with `bases` table if you want them:
+        base_name: user.base_name || null,
+        base_code: user.base_code || null,
+        location: user.location || null,
+      },
+    });
+  } catch (err) {
+    console.error("Error during login:", err);
+    res.status(500).send("Internal Server Error");
+  }
+};
 
 exports.createBase= async (req,res)=>{
     try{
